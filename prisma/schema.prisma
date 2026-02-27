@@ -1,0 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LinkPrecedence {
+  primary
+  secondary
+}
+
+model Contact {
+  id             Int            @id @default(autoincrement())
+  phoneNumber    String?
+  email          String?
+  linkedId       Int?
+  linkPrecedence LinkPrecedence @default(primary)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  // ── Performance indexes ──────────────────────────────────────────────────
+  // email and phoneNumber are queried on every /identify request.
+  // linkedId is used for cluster traversal and relinking operations.
+  @@index([email])
+  @@index([phoneNumber])
+  @@index([linkedId])
+
+  // ── Uniqueness constraint ─────────────────────────────────────────────────
+  // DB-level guard against concurrent duplicate inserts.
+  // Two concurrent requests that both read zero matches and race to insert
+  // will have one rejected at the DB layer. The application handles the
+  // resulting Prisma P2002 (unique constraint violation) by retrying through
+  // the merge path instead of surfacing it as a 500 error.
+  @@unique([email, phoneNumber])
+}
